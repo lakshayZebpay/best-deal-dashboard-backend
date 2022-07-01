@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 const { requireAuth } = require("./middleware/authMiddleware");
 const jwt = require("jsonwebtoken");
 const User = require("./models/user_model");
+const Transaction = require("./models/transactions_model");
 
 app.use(cors());
 app.use(express.json());
@@ -20,15 +21,17 @@ app.get("/user", requireAuth, async (req, res) => {
   const user = await User.findOne({
     email: req.user.email,
   });
+
   const sendData = {
+    id: user.id,
     name: user.name,
     email: user.email,
     number: user.number,
   };
   res.send({ userData: sendData });
 });
+
 app.post("/api/register", async (req, res) => {
-  //   console.log(req.body);
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     const user = await User.create({
@@ -42,7 +45,6 @@ app.post("/api/register", async (req, res) => {
     res.json({ status: "err", error: "Duplicate Email" });
   }
 });
-
 app.post("/api/login", async (req, res) => {
   const user = await User.findOne({
     $or: [{ number: req.body.username }, { email: req.body.username }],
@@ -57,6 +59,7 @@ app.post("/api/login", async (req, res) => {
         }
       );
       const sendData = {
+        id: user.id,
         name: user.name,
         email: user.email,
         number: user.number,
@@ -67,6 +70,41 @@ app.post("/api/login", async (req, res) => {
     }
   } catch {
     res.status(500).send();
+  }
+});
+
+app.get("/transactions", requireAuth, async (req, res) => {
+  const user = await User.findOne({
+    email: req.user.email,
+  });
+  const transactionData = await Transaction.find({
+    userId: user.id,
+  });
+
+  res.send({ transactionData });
+});
+
+app.post("/transactions", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findOne({
+      email: req.user.email,
+    });
+
+    const transaction = await Transaction.create({
+      exchangeName: req.body.exchangeName,
+      token: req.body.coinName,
+      currency: req.body.currency,
+      tokenQuantity: req.body.coinAmount,
+      dateTime: new Date(),
+      cost: req.body.cost,
+      userId: user.id,
+      oneTokenCost: req.body.oneTokenCost,
+      progress: req.body.progress,
+    });
+
+    res.json({ status: "Transaction Created" });
+  } catch (err) {
+    res.json({ status: "err", error: "Transaction Failed" });
   }
 });
 
