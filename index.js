@@ -8,12 +8,14 @@ const { requireAuth } = require("./middleware/authMiddleware");
 const jwt = require("jsonwebtoken");
 const User = require("./models/user_model");
 const Transaction = require("./models/transactions_model");
+const MValue = require("./models/market_data_model");
+require("./market_data/market_data");
 
 app.use(cors());
 app.use(express.json());
 
 mongoose.connect(
-  "mongodb+srv://GSM1023-zebpay:GSM1023-zebpay@cluster0.anp6t.mongodb.net/user-data?retryWrites=true&w=majority"
+  "mongodb+srv://GSM1023-zebpay:GSM1023-zebpay@cluster0.anp6t.mongodb.net/best-deal?retryWrites=true&w=majority"
 );
 //mongoose.connect('mongodb://localhost:27017/Group_D_Tables')
 
@@ -105,6 +107,63 @@ app.post("/transactions", requireAuth, async (req, res) => {
     res.json({ status: "Transaction Created" });
   } catch (err) {
     res.json({ status: "err", error: "Transaction Failed" });
+  }
+});
+
+app.get("/api/marketValue/:token_name", async (req, res) => {
+  try {
+    const token = req.params.token_name;
+    const token_data = await MValue.find({ token });
+    const exchange_data = [];
+
+    token_data.forEach((data) => {
+      const object = {
+        _id: data._id,
+        name: data.exchangeName,
+        price: data.price,
+      };
+      exchange_data.push(object);
+    });
+
+    //console.log(exchange_data);
+    res.send(exchange_data);
+  } catch (error) {
+    res.send(error);
+  }
+});
+
+app.post("/api/marketValue", async (req, res) => {
+  //   console.log(req.body);
+  try {
+    const newMarketData = await MValue.create({
+      token: req.body.token,
+      currency: req.body.currency,
+      exchangeName: req.body.exchangeName,
+      price: req.body.price,
+    });
+    res.json({ status: "ok" });
+  } catch (err) {
+    res.json({ status: "err", error: "Some error in posting" });
+  }
+});
+app.patch("/api/marketValue/:token_name/:exchange_name", async (req, res) => {
+  try {
+    const filter = {
+      token: req.params.token_name,
+      exchangeName: req.params.exchange_name,
+    };
+    const update = { price: req.body.price };
+    let doc = await MValue.findOneAndUpdate(filter, update);
+    if (!doc) {
+      throw new Error();
+    }
+    res.json({ status: "ok" });
+  } catch (error) {
+    res.json({
+      status: "err",
+      error:
+        "Some error in updating , please check token name and exchange name",
+    });
   }
 });
 
