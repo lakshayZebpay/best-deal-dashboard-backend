@@ -142,20 +142,25 @@ croncallGEMINI("BATUSD");
 function croncallGEMINI(token) {
   cron.schedule("*/30 * * * * *", () => {
     //console.log(new Date());
-    getGEMINIPrice(
-      `https://api.gemini.com/v1/pubticker/${token.toLowerCase()}`
-    ).then(async (data) => {
-      const tok = token.slice(0, 3);
-      await axios.patch(`http://localhost:1337/api/marketValue/${tok}/GEMINI`, {
-        price: data,
+    getGEMINIPrice(`https://api.gemini.com/v1/pubticker/${token.toLowerCase()}`)
+      .then(async (data) => {
+        const tok = token.slice(0, 3);
+        await axios.patch(
+          `http://localhost:1337/api/marketValue/${tok}/GEMINI`,
+          {
+            price: data,
+          }
+        );
+        //console.log(`GEMINI-${tok} : ` + data);
+      })
+      .catch((e) => {
+        console.log("error");
       });
-      //console.log(`GEMINI-${tok} : ` + data);
-    });
   });
 }
 
 async function getGEMINIPrice(url) {
   let res = await unirest.get(url);
   let data = res.body;
-  return data.volume.USD;
+  return data.last;
 }
