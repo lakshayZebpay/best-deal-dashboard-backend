@@ -10,6 +10,7 @@ const User = require("./models/user_model");
 const Transaction = require("./models/transactions_model");
 const MValue = require("./models/market_data_model");
 require("./market_data/market_data");
+const verifyTransaction = require("./verifyTransaction/verifyTransaction");
 
 app.use(cors());
 app.use(express.json());
@@ -91,22 +92,27 @@ app.post("/transactions", requireAuth, async (req, res) => {
     const user = await User.findOne({
       email: req.user.email,
     });
+    const { verified, oneTokenCost } = await verifyTransaction(
+      "/api/marketValue",
+      req.body
+    );
 
-    const transaction = await Transaction.create({
+    if (!verified) throw new Error({ message: "Coin price has changed" });
+    await Transaction.create({
       exchangeName: req.body.exchangeName,
       token: req.body.coinName,
       currency: req.body.currency,
-      tokenQuantity: req.body.coinAmount,
+      tokenQuantity: req.body.cost / oneTokenCost,
       dateTime: new Date(),
       cost: req.body.cost,
       userId: user.id,
-      oneTokenCost: req.body.oneTokenCost,
+      oneTokenCost: oneTokenCost,
       progress: req.body.progress,
     });
 
     res.json({ status: "Transaction Created" });
   } catch (err) {
-    res.json({ status: "err", error: "Transaction Failed" });
+    res.json({ status: "err", error: "Transaction Failed", err: err });
   }
 });
 
